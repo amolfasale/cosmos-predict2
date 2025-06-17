@@ -1,0 +1,311 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import argparse
+import os
+import shutil
+from datetime import datetime
+import tempfile
+
+import gradio as gr
+
+from examples.video2world import setup_pipeline, generate_video, cleanup_distributed
+
+
+class CosmosPredict2GradioApp:
+    def __init__(self, checkpoint_dir="checkpoints", output_dir="output/cosmos-predict2"):
+        self.checkpoint_dir = checkpoint_dir
+        self.output_dir = output_dir
+        os.makedirs(self.output_dir, exist_ok=True)  # Create output directory if it doesn't exist
+
+    def create_args_namespace(
+        self,
+        input_path,
+        prompt,
+        negative_prompt,
+        model_size,
+        resolution,
+        fps,
+        guidance,
+        seed,
+        num_conditional_frames,
+        num_gpus=1,
+        disable_guardrail=False,
+        offload_guardrail=False,
+        disable_prompt_refiner=False,
+        offload_prompt_refiner=False,
+        batch_input_json=None,
+        dit_path=None
+    ):
+        """Create an argparse.Namespace object that mimics command line arguments in transfer.py"""
+        args = argparse.Namespace()
+
+        # Required arguments
+        args.input_path = input_path
+        args.model_size = model_size
+        args.resolution = resolution
+        args.fps = fps
+        args.dit_path = dit_path
+
+        # Video and prompt settings
+        args.prompt = prompt
+        args.negative_prompt = negative_prompt
+        args.num_conditional_frames = num_conditional_frames
+        args.batch_input_json = batch_input_json
+
+        # Create unique output folder with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_folder = os.path.join(self.output_dir, f"generation_{timestamp}")
+        os.makedirs(output_folder, exist_ok=True)
+        args.save_path = os.path.join(output_folder, "generated_video.mp4")
+
+        # Generation parameters
+        args.guidance = guidance
+        args.seed = seed
+        args.num_gpus = num_gpus
+
+        # Memory optimization
+        args.disable_guardrail = disable_guardrail
+        args.offload_guardrail = offload_guardrail
+        args.disable_prompt_refiner = disable_prompt_refiner
+        args.offload_prompt_refiner = offload_prompt_refiner
+
+        return args
+
+    def infer(
+        self,
+        input_path,
+        prompt,
+        negative_prompt,
+        model_size,
+        resolution,
+        fps,
+        guidance,
+        seed,
+        num_conditional_frames,
+        num_gpus=1,
+        disable_guardrail=False,
+        offload_guardrail=False,
+        disable_prompt_refiner=False,
+        offload_prompt_refiner=False,
+    ):
+        """Run inference with the provided parameters"""
+
+        # Create args namespace
+        args = self.create_args_namespace(
+            input_path=input_path,
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            model_size=model_size,
+            resolution=resolution,
+            fps=fps,
+            guidance=guidance,
+            seed=seed,
+            num_conditional_frames=num_conditional_frames,
+            num_gpus=num_gpus,
+            disable_guardrail=disable_guardrail,
+            offload_guardrail=offload_guardrail,
+            disable_prompt_refiner=disable_prompt_refiner,
+            offload_prompt_refiner=offload_prompt_refiner
+        )
+
+        # Setup pipeline
+        pipeline = setup_pipeline(args)
+
+        # Generate video
+        generate_video(args, pipeline)
+
+        # Cleanup distributed resources
+        cleanup_distributed()
+
+        # Return the generated video path and status message
+        return args.save_path, f"Video generated successfully at {args.save_path}"
+
+
+def setup_gradio_interface():
+    app = CosmosPredict2GradioApp()
+
+    with gr.Blocks(title="Cosmos-Predict2 Video Generation", theme=gr.themes.Soft()) as interface:
+        gr.Markdown("# Cosmos-Predict2: World Generation with Adaptive Multimodal Control")
+        gr.Markdown("Upload a image or video and configure controls to generate a new video with the Cosmos-Predict2 model.")
+        gr.Markdown(f"**Output Directory**: {app.output_dir}")
+
+        with gr.Row():
+            with gr.Column(scale=1):
+                # Input controls
+                input_file = gr.File(file_types=[".jpg", ".jpeg", ".mp4"], height=300, label="Upload Image or Video")
+                input_preview1 = gr.Image(label="Input Preview", height=300, visible=False)
+                input_preview2 = gr.Video(label="Input Preview", height=300, visible=False)
+
+                def update_preview(file):
+                    if file:
+                        ext = os.path.splitext(file.name)[1]
+                        if ext in [".jpg", ".jpeg"]:
+                            return gr.update(visible=True, value=file), gr.update(visible=False, value=None)
+                        elif ext in [".mp4"]:
+                            return gr.update(visible=False, value=None), gr.update(visible=True, value=file)
+                    return gr.update(visible=False), gr.update(visible=False)
+
+                input_file.change(
+                    fn=update_preview,
+                    inputs=[input_file],
+                    outputs=[input_preview1, input_preview2],
+                )
+                input_file.change(
+                    fn=lambda file: (file, file),
+                    inputs=[input_file],
+                    outputs=[input_preview1, input_preview2],
+                )
+                prompt = gr.Textbox(
+                    label="Prompt",
+                    value="A point-of-view video shot from inside a vehicle, capturing a quiet suburban street bathed in bright sunlight. The road is lined with parked cars on both sides, and buildings, likely residential or small businesses, are visible across the street. A STOP sign is prominently displayed near the center of the intersection. The sky is clear and blue, with the sun shining brightly overhead, casting long shadows on the pavement. On the left side of the street, several vehicles are parked, including a van with some text on its side. Across the street, a white van is parked near two trash bins, and a red SUV is parked further down. The buildings on either side have a mix of architectural styles, with some featuring flat roofs and others with sloped roofs. Overhead, numerous power lines stretch across the street, and a few trees are visible in the background, partially obscuring the view of the buildings. As the video progresses, a white car truck makes a right turn into the adjacent opposite lane. The ego vehicle slows down and comes to a stop, waiting until the car fully enters the opposite lane before proceeding. The pedestrian keeps walking on the street. The other vehicles remain stationary, parked along the curb. The scene remains static otherwise, with no significant changes in the environment or additional objects entering the frame. By the end of the video, the white car truck has moved out of the camera view, the rest of the scene remains largely unchanged, maintaining the same composition and lighting conditions as the beginning.",
+                    lines=2,
+                )
+
+                negative_prompt = gr.Textbox(
+                    label="Negative Prompt",
+                    value="The video captures a series of frames showing ugly scenes, static with no motion, motion blur, over-saturation, shaky footage, low resolution, grainy texture, pixelated images, poorly lit areas, underexposed and overexposed scenes, poor color balance, washed out colors, choppy sequences, jerky movements, low frame rate, artifacting, color banding, unnatural transitions, outdated special effects, fake elements, unconvincing visuals, poorly edited content, jump cuts, visual noise, and flickering. Overall, the video is of poor quality.",
+                    lines=1,
+                )
+
+                with gr.Row(equal_height=True):
+                    with gr.Column(scale=1):
+                        model_size = gr.Dropdown(choices=["2B", "14B"], label="Model Size", interactive=True, value="2B")
+                    with gr.Column(scale=3):
+                        resolution = gr.Dropdown(choices=["480", "720"], label="Resolution", interactive=True, value="720")
+                with gr.Row(equal_height=True):
+                    with gr.Column(scale=1):
+                        fps = gr.Dropdown(choices=[10, 16], label="FPS", interactive=True, value=16)
+                    with gr.Column(scale=3):
+                        num_conditional_frames = gr.Dropdown(choices=[1, 5], label="Conditional Frames", interactive=True, value=1)
+
+                # Advanced settings
+                with gr.Accordion("Advanced Settings", open=False):
+                    guidance = gr.Slider(1, 15, value=7.0, step=0.5, label="Guidance")
+                    seed = gr.Number(value=1, label="Seed", precision=0, interactive=True)
+                    num_gpus = gr.Slider(1, 8, value=1, step=1, label="Number of GPUs")
+                    with gr.Row(equal_height=True):
+                        with gr.Column(scale=1):
+                            disable_guardrail = gr.Checkbox(label="Disable Guardrail", value=False)
+                        with gr.Column(scale=3):
+                            offload_guardrail = gr.Checkbox(label="Offload Guardrail", value=False)
+                    with gr.Row(equal_height=True):
+                        with gr.Column(scale=1):
+                            disable_prompt_refiner = gr.Checkbox(label="Disable Prompt Refiner", value=False)
+                        with gr.Column(scale=3):
+                            offload_prompt_refiner = gr.Checkbox(label="Offload Prompt Refiner", value=False)
+
+                generate_btn = gr.Button("Generate Video", variant="primary", size="lg")
+
+            with gr.Column(scale=1):
+                # Output
+                output_video = gr.Video(label="Generated Video", height=400)
+                status_text = gr.Textbox(label="Status", lines=5, interactive=False)
+
+        # Event handler
+        def infer_wrapper(
+            input_file,
+            prompt,
+            negative_prompt,
+            model_size,
+            resolution,
+            fps,
+            guidance,
+            seed,
+            num_conditional_frames,
+            num_gpus,
+            disable_guardrail,
+            offload_guardrail,
+            disable_prompt_refiner,
+            offload_prompt_refiner
+        ):
+            return app.infer(
+                input_path=input_file,
+                prompt=prompt,
+                negative_prompt=negative_prompt,
+                model_size=model_size,
+                resolution=resolution,
+                fps=fps,
+                guidance=guidance,
+                seed=seed,
+                num_conditional_frames=num_conditional_frames,
+                num_gpus=num_gpus,
+                disable_guardrail=disable_guardrail,
+                offload_guardrail=offload_guardrail,
+                disable_prompt_refiner=disable_prompt_refiner,
+                offload_prompt_refiner=offload_prompt_refiner,                
+            )
+
+        generate_btn.click(
+            fn=infer_wrapper,
+            inputs=[
+                input_file,
+                prompt,
+                negative_prompt,
+                model_size,
+                resolution,
+                fps,
+                guidance,
+                seed,
+                num_conditional_frames,
+                num_gpus,
+                disable_guardrail,
+                offload_guardrail,
+                disable_prompt_refiner,
+                offload_prompt_refiner,
+            ],
+            outputs=[output_video, status_text],
+        )
+
+        # Examples section
+        gr.Markdown("## Tips for better results:")
+        gr.Markdown(
+            """
+        - **Describe a single, captivating scene**: Focus on one scene to prevent unnecessary shot changes
+        - **Use detailed prompts**: Rich descriptions lead to better quality outputs  
+        - **Experiment with control weights**: Different combinations can yield different artistic effects
+        - **Adjust sigma_max**: Lower values preserve more of the input video structure
+        """
+        )
+
+        gr.Markdown("## File Storage:")
+        gr.Markdown(
+            f"""
+        - **Input videos**: Temporarily stored in Gradio's cache, then copied to output folder
+        - **Generated videos**: Saved to `{app.output_dir}/generation_YYYYMMDD_HHMMSS/`
+        - **Output structure**: Each generation gets its own timestamped folder with input copy, output video, and prompt
+        """
+        )
+
+    return interface
+
+
+if __name__ == "__main__":
+    # Check if checkpoints exist
+    if not os.path.exists("checkpoints"):
+        print("Error: checkpoints directory not found. Please download the model checkpoints first.")
+        print("Run: python scripts/download_checkpoints.py --output_dir checkpoints/")
+        exit(1)
+
+    interface = setup_gradio_interface()
+    interface.launch(
+        server_name="0.0.0.0",
+        server_port=8080,
+        share=False,
+        debug=True,
+        # Configure file upload limits
+        max_file_size="500MB",  # Adjust as needed
+        allowed_paths=["/mnt/pvc/gradio"],  # Allow access to output directory
+    )

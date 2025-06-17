@@ -5,7 +5,7 @@ FROM nvcr.io/nvidia/pytorch:25.04-py3
 RUN apt-get update && apt-get install -y git tree ffmpeg wget
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh && ln -s /lib64/libcuda.so.1 /lib64/libcuda.so
 RUN apt-get install -y libglib2.0-0
-RUN sed -i -e 's/h11==0.14.0/h11==0.16.0/g' /etc/pip/constraint.txt
+# RUN sed -i -e 's/h11==0.14.0/h11==0.16.0/g' /etc/pip/constraint.txt
 
 # Install the dependencies from requirements-docker.txt
 COPY ./requirements-docker.txt /requirements.txt
