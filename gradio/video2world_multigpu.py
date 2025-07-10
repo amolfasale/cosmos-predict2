@@ -20,7 +20,14 @@ import typing
 
 from loguru import logger
 from datetime import datetime
-import gradio as gr
+
+# Ensure h11 is uninstalled for Gradio compatibility, because httpx conflicts with Gradio's requirements
+try:
+    import gradio as gr
+except ImportError:
+    subprocess.check_call(["pip", "uninstall", "h11", "-y"])
+    subprocess.check_call(["pip", "install", "gradio", "--use-deprecated=legacy-resolver"])
+    import gradio as gr
 
 VIDEO_EXTENSION = typing.Literal[".mp4"]
 IMAGE_EXTENSION = typing.Literal[".jpg", ".jpeg"]
