@@ -47,13 +47,13 @@ datasets/cosmos_nemo_assets/
 Cosmos-NeMo-Assets comes with a single caption for 4 long videos.
 In this example, we extract video frames and save as jpg files to prepare a dataset for text2image training.
 ```bash
-PYTHONPATH=$(pwd) python scripts/extract_images_from_videos.py --input_dataset_dir datasets/cosmos_nemo_assets --output_dataset_dir datasets/cosmos_nemo_assets_images --stride 30
+python scripts/extract_images_from_videos.py --input_dataset_dir datasets/cosmos_nemo_assets --output_dataset_dir datasets/cosmos_nemo_assets_images --stride 30
 ```
 
 Run the following command to pre-compute T5-XXL embeddings for the video caption used for post-training:
 ```bash
 # The script will use the provided prompt, save the T5-XXL embeddings in pickle format.
-PYTHONPATH=$(pwd) python scripts/get_t5_embeddings_from_cosmos_nemo_assets.py --dataset_path datasets/cosmos_nemo_assets_images --prompt "An image of sks teal robot." --is_image
+python scripts/get_t5_embeddings_from_cosmos_nemo_assets.py --dataset_path datasets/cosmos_nemo_assets_images --prompt "An image of sks teal robot." --is_image
 ```
 
 Dataset folder format:
@@ -156,11 +156,21 @@ For example, if a posttrained checkpoint with 1000 iterations is to be used, run
 Use `--dit_path` argument to specify the path to the post-trained checkpoint.
 
 ```bash
-CUDA_HOME=$CONDA_PREFIX PYTHONPATH=$(pwd) python examples/text2image.py \
+python examples/text2image.py \
   --model_size 2B \
   --dit_path "checkpoints/posttraining/text2image/2b_cosmos_nemo_assets/checkpoints/model/iter_000001000.pt" \
   --prompt "An image of sks teal robot." \
-  --save_path output/cosmos_nemo_assets/generated_video_teal_robot.jpg
+  --save_path output/generated_image_2b_teal_robot.jpg
+```
+
+To load EMA weights from the post-trained checkpoint, add argument `--load_ema`.
+```bash
+python examples/text2image.py \
+  --model_size 2B \
+  --dit_path "checkpoints/posttraining/text2image/2b_cosmos_nemo_assets/checkpoints/model/iter_000001000.pt" \
+  --prompt "An image of sks teal robot." \
+  --load_ema \
+  --save_path output/generated_image_2b_teal_robot_ema.jpg
 ```
 
 See [documentations/inference_text2image.md](documentations/inference_text2image.md) for inference run details.

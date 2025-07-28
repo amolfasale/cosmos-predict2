@@ -27,7 +27,7 @@ The inference script is `examples/text2image.py`.
 It requires the input argument `--prompt` (text input).
 To see the complete list of available arguments, run:
 ```bash
-python -m examples.text2image --help
+python examples/text2image.py --help
 ```
 
 ## Examples
@@ -38,10 +38,10 @@ This is a basic example for running inference on the 2B model with a single prom
 The output is saved to `output/text2image_2b.jpg`.
 ```bash
 # Set the input prompt
-PROMPT="A well-worn broom sweeps across a dusty wooden floor, its bristles gathering crumbs and flecks of debris in swift, rhythmic strokes. Dust motes dance in the sunbeams filtering through the window, glowing momentarily before settling. The quiet swish of straw brushing wood is interrupted only by the occasional creak of old floorboards. With each pass, the floor grows cleaner, restoring a sense of quiet order to the humble room."
+PROMPT_="A well-worn broom sweeps across a dusty wooden floor, its bristles gathering crumbs and flecks of debris in swift, rhythmic strokes. Dust motes dance in the sunbeams filtering through the window, glowing momentarily before settling. The quiet swish of straw brushing wood is interrupted only by the occasional creak of old floorboards. With each pass, the floor grows cleaner, restoring a sense of quiet order to the humble room."
 # Run text2image generation
 python -m examples.text2image \
-    --prompt "${PROMPT}" \
+    --prompt "${PROMPT_}" \
     --model_size 2B \
     --save_path output/text2image_2b.jpg
 ```
@@ -93,6 +93,8 @@ Input and output parameters:
 
 Model selection:
 - `--model_size`: Size of the model to use (choices: "2B", "14B", default: "2B")
+- `--dit_path`: Custom path to the DiT model checkpoint for post-trained models (default: uses standard checkpoint path based on model_size)
+- `--load_ema`: Whether to use EMA weights from the post-trained DIT model checkpoint for generation.
 
 Generation parameters:
 - `--seed`: Random seed for reproducible results (default: 0)

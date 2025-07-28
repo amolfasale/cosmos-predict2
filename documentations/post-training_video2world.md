@@ -244,9 +244,20 @@ For example, if a posttrained checkpoint with 1000 iterations is to be used, run
 Use `--dit_path` argument to specify the path to the post-trained checkpoint.
 
 ```bash
+python examples/video2world.py \
+  --model_size 2B \
+  --dit_path "checkpoints/posttraining/video2world/2b_custom_data/checkpoints/model/iter_000001000.pt" \
+  --prompt "A descriptive prompt for physical AI." \
+  --input_path "assets/video2world_cosmos_nemo_assets/output_Digit_Lift_movie.jpg" \
+  --save_path output/cosmos_nemo_assets/generated_video_from_post-training.mp4
+```
+
+To load EMA weights from the post-trained checkpoint, add argument `--load_ema`.
+```bash
 CUDA_HOME=$CONDA_PREFIX PYTHONPATH=$(pwd) python examples/video2world.py \
   --model_size 2B \
   --dit_path "checkpoints/posttraining/video2world/2b_custom_data/checkpoints/model/iter_000001000.pt" \
+  --load_ema \
   --prompt "A descriptive prompt for physical AI." \
   --input_path "assets/video2world_cosmos_nemo_assets/output_Digit_Lift_movie.jpg" \
   --save_path output/cosmos_nemo_assets/generated_video_from_post-training.mp4

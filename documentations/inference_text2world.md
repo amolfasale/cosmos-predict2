@@ -46,11 +46,11 @@ The output is saved to `output/text2world_2b.mp4`.
 
 ```bash
 # Set the input prompt
-PROMPT="An autonomous welding robot arm operating inside a modern automotive factory, sparks flying as it welds a car frame with precision under bright overhead lights."
+PROMPT_="An autonomous welding robot arm operating inside a modern automotive factory, sparks flying as it welds a car frame with precision under bright overhead lights."
 # Run text2world generation
 python -m examples.text2world \
     --model_size 2B \
-    --prompt "${PROMPT}" \
+    --prompt "${PROMPT_}" \
     --save_path output/text2world_2b.mp4
 ```
 
@@ -106,7 +106,7 @@ export NUM_GPUS=8
 # Run text2world generation with multi-GPU acceleration
 torchrun --nproc_per_node=${NUM_GPUS} -m examples.text2world \
     --model_size 2B \
-    --prompt "${PROMPT}" \
+    --prompt "${PROMPT_}" \
     --save_path output/text2world_2b_${NUM_GPUS}gpu.mp4 \
     --num_gpus ${NUM_GPUS} \
     --disable_guardrail \
@@ -131,6 +131,7 @@ The `text2world.py` script supports the following command-line arguments:
 
 Model selection:
 - `--model_size`: Size of the model to use (choices: "2B", "14B", default: "2B")
+- `--load_ema`: Whether to use EMA weights from the post-trained DIT model checkpoint for generation.
 
 Input parameters:
 - `--prompt`: Text prompt describing the video to generate (default: predefined example prompt)
@@ -146,14 +147,18 @@ Generation parameters:
 
 Performance optimization parameters:
 - `--use_cuda_graphs`: Use CUDA Graphs to accelerate DiT inference.
+- `--natten`: Use sparse attention variants built with [NATTEN](https://natten.org). This feature is
+    only available with 720p resolution, and on Hopper and specific Blackwell datacenter cards
+    (B200 and GB200) for now. [Learn more](performance.md).
 - `--benchmark`: Run in benchmark mode to measure average generation time.
 
 Text2Image phase parameters:
-- `--resolution`: Resolution for text2image generation (choices: "480", "720", default: "720")
-- `--fps`: FPS for video2world generation (choices: 10, 16, default: 16)
+- `--dit_path_text2image`: Custom path to the DiT model checkpoint for post-trained Text2Image models
 
 Video2World phase parameters:
-- `--dit_path`: Custom path to the DiT model checkpoint for post-trained models
+- `--dit_path_video2world`: Custom path to the DiT model checkpoint for post-trained Video2World models
+- `--resolution`: Resolution for text2image generation (choices: "480", "720", default: "720")
+- `--fps`: FPS for video2world generation (choices: 10, 16, default: 16)
 
 Multi-GPU inference:
 - `--num_gpus`: Number of GPUs to use for context parallel inference (default: 1)

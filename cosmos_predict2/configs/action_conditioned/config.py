@@ -13,23 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import attrs
-
 from cosmos_predict2.conditioner import ActionConditioner, BooleanFlag, ReMapkey, TextAttr
 from cosmos_predict2.configs.base.config_video2world import (
     ConditioningStrategy,
     CosmosGuardrailConfig,
     CosmosReason1Config,
-    SolverTimestampConfig,
     Video2WorldPipelineConfig,
 )
 from cosmos_predict2.configs.base.defaults.ema import EMAConfig
 from cosmos_predict2.models.text2image_dit import SACConfig
 from cosmos_predict2.models.video2world_action_dit import ActionConditionedMinimalV1LVGDiT
 from cosmos_predict2.tokenizers.tokenizer import TokenizerInterface
-from imaginaire.config import make_freezable
 from imaginaire.lazy_config import LazyCall as L
-from imaginaire.lazy_config import LazyDict
 
 # Cosmos Predict2 Video2World 2B
 PREDICT2_VIDEO2WORLD_NET_2B_ACTION_CONDITIONED = L(ActionConditionedMinimalV1LVGDiT)(
@@ -103,6 +98,7 @@ PREDICT2_VIDEO2WORLD_PIPELINE_2B_ACTION_CONDITIONED = Video2WorldPipelineConfig(
     net=PREDICT2_VIDEO2WORLD_NET_2B_ACTION_CONDITIONED,
     precision="bfloat16",
     rectified_flow_t_scaling_factor=1.0,
+    rectified_flow_loss_weight_uniform=True,
     resize_online=True,
     resolution="720",
     ema=L(EMAConfig)(enabled=False),  # defaults to inference

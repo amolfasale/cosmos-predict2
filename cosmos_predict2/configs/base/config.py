@@ -71,7 +71,7 @@ def make_config() -> Config:
     c.trainer.type = Trainer
     c.trainer.max_iter = 400_000
     c.trainer.logging_iter = 10
-    c.trainer.validation_iter = 100
+    c.trainer.validation_iter = 500
     c.trainer.run_validation = False
     c.trainer.callbacks = None
 
